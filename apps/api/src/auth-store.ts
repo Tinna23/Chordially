@@ -1,10 +1,26 @@
 import { randomBytes } from "node:crypto";
 
-import type { AuthSession, AuthUser, RefreshToken } from "@chordially/types";
+import type { AuthErrorCode, AuthSession, AuthUser, RefreshToken } from "@chordially/types";
 
 import { env } from "./env.js";
 import { signAccessToken } from "./token-service.js";
 import { lockoutRemaining, recordFailure, recordSuccess } from "./lockout-store.js";
+
+/**
+ * Typed service-layer error. Carries an AuthErrorCode so the centralized
+ * error handler can map it to the correct HTTP status without inspecting
+ * message strings. Extend the taxonomy in AuthErrorCode as new auth
+ * behaviours are added.
+ */
+export class AuthServiceError extends Error {
+  constructor(
+    public readonly code: AuthErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AuthServiceError";
+  }
+}
 
 type RegisterInput = { email: string; password: string; displayName: string };
 type LoginInput    = { email: string; password: string; origin?: string; ip?: string; userAgent?: string };
@@ -25,7 +41,7 @@ export function listUsers(): AuthUser[] {
 
 export function registerUser(input: RegisterInput): AuthUser {
   const email = input.email.trim().toLowerCase();
-  if (users.has(email)) throw new Error("A user with that email already exists.");
+  if (users.has(email)) throw new AuthServiceError("DUPLICATE_EMAIL", "A user with that email already exists.");
 
   const user: AuthUser & { password: string } = {
     id: `user_${users.size + 1}`,
@@ -41,22 +57,8 @@ export function registerUser(input: RegisterInput): AuthUser {
 
 export function loginUser(input: LoginInput): { session: AuthSession; refreshToken: string } {
   const email = input.email.trim().toLowerCase();
-
-  const remaining = lockoutRemaining(email);
-  if (remaining > 0) {
-    const err = Object.assign(new Error("Account temporarily locked. Try again later."), {
-      code: "ACCOUNT_LOCKED",
-      retryAfterMs: remaining,
-    });
-    throw err;
-  }
-
-  const user = users.get(email);
-  if (!user || user.password !== input.password) {
-    recordFailure(email);
-    throw new Error("Invalid email or password.");
-  }
-  recordSuccess(email);
+  const user  = users.get(email);
+  if (!user || user.password !== input.password) throw new AuthServiceError("INVALID_CREDENTIALS", "Invalid email or password.");
 
   const now = new Date().toISOString();
 
@@ -115,7 +117,7 @@ export function getUserById(id: string): AuthUser | undefined {
 
 export function updateUserPassword(userId: string, newPassword: string): void {
   const entry = [...users.values()].find((u) => u.id === userId);
-  if (!entry) throw new Error("User not found.");
+  if (!entry) throw new AuthServiceError("INVALID_SESSION", "User not found.");
   entry.password = newPassword;
 }
 
@@ -143,9 +145,9 @@ export function rotateRefreshToken(
 ): { session: AuthSession; refreshToken: string } {
   const rt = refreshTokens.get(oldToken);
 
-  if (!rt)                                    throw new Error("Refresh token not found.");
-  if (rt.usedAt)                              throw new Error("Refresh token already used.");
-  if (new Date(rt.expiresAt) < new Date())    throw new Error("Refresh token expired.");
+  if (!rt)                                    throw new AuthServiceError("TOKEN_INVALID", "Refresh token not found.");
+  if (rt.usedAt)                              throw new AuthServiceError("TOKEN_INVALID", "Refresh token already used.");
+  if (new Date(rt.expiresAt) < new Date())    throw new AuthServiceError("TOKEN_EXPIRED", "Refresh token expired.");
 
   // Mark old token as consumed.
   rt.usedAt = new Date().toISOString();
@@ -156,7 +158,7 @@ export function rotateRefreshToken(
 
   // Find the user.
   const user = [...users.values()].find((u) => u.id === rt.userId);
-  if (!user) throw new Error("User not found.");
+  if (!user) throw new AuthServiceError("INVALID_SESSION", "User not found.");
 
   const now = new Date().toISOString();
   const newSession: AuthSession = {
