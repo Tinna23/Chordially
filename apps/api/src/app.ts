@@ -62,16 +62,24 @@ export function createApp(): Express {
     }
   });
 
-  // #321 – rate-limited
+  // #321 – rate-limited; #330 – account lockout
   app.post("/api/v1/auth/login", rateLimiters.login, (req, res) => {
     const payload = loginSchema.parse(req.body);
     const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
       ?? req.socket.remoteAddress;
     const userAgent = req.headers["user-agent"];
-    const { session, refreshToken } = loginUser({ ...payload, ip, userAgent });
-    // Redact telemetry from the response; it is stored server-side only.
-    const { ip: _ip, userAgent: _ua, ...safeSession } = session;
-    res.status(200).json({ message: "Login starter flow completed.", session: safeSession, refreshToken });
+    try {
+      const { session, refreshToken } = loginUser({ ...payload, ip, userAgent });
+      const { ip: _ip, userAgent: _ua, ...safeSession } = session;
+      res.status(200).json({ message: "Login starter flow completed.", session: safeSession, refreshToken });
+    } catch (err: unknown) {
+      const e = err as { code?: string; retryAfterMs?: number; message: string };
+      if (e.code === "ACCOUNT_LOCKED") {
+        res.status(423).json({ error: "ACCOUNT_LOCKED", message: e.message, retryAfterMs: e.retryAfterMs });
+        return;
+      }
+      res.status(401).json({ error: "LOGIN_FAILED", message: "Invalid email or password." });
+    }
   });
 
   // #318 – single-session logout: revokes only the supplied token

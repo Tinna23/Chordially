@@ -4,6 +4,7 @@ import type { AuthSession, AuthUser, RefreshToken } from "@chordially/types";
 
 import { env } from "./env.js";
 import { signAccessToken } from "./token-service.js";
+import { lockoutRemaining, recordFailure, recordSuccess } from "./lockout-store.js";
 
 type RegisterInput = { email: string; password: string; displayName: string };
 type LoginInput    = { email: string; password: string; origin?: string; ip?: string; userAgent?: string };
@@ -40,8 +41,22 @@ export function registerUser(input: RegisterInput): AuthUser {
 
 export function loginUser(input: LoginInput): { session: AuthSession; refreshToken: string } {
   const email = input.email.trim().toLowerCase();
-  const user  = users.get(email);
-  if (!user || user.password !== input.password) throw new Error("Invalid email or password.");
+
+  const remaining = lockoutRemaining(email);
+  if (remaining > 0) {
+    const err = Object.assign(new Error("Account temporarily locked. Try again later."), {
+      code: "ACCOUNT_LOCKED",
+      retryAfterMs: remaining,
+    });
+    throw err;
+  }
+
+  const user = users.get(email);
+  if (!user || user.password !== input.password) {
+    recordFailure(email);
+    throw new Error("Invalid email or password.");
+  }
+  recordSuccess(email);
 
   const now = new Date().toISOString();
 
