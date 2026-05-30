@@ -6,53 +6,21 @@ import { mobileConfig } from "./src/config";
 type Screen = "home" | "resetRequest" | "resetComplete" | "verifyPending";
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("home");
-  const [email, setEmail] = useState("");
-  const [token, setToken] = useState("");
-  const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState("");
-  const [signedIn, setSignedIn] = useState(true);
+  const [state, setState] = useState(authStore.getState());
 
-  async function api(path: string, body: Record<string, string>) {
-    const res = await fetch(`${mobileConfig.apiBaseUrl}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+  useEffect(() => authStore.subscribe(setState), []);
+  useEffect(() => {
+    authStore.boot({
+      sessionId: "session-mobile-1",
+      sessions: [
+        { id: "session-mobile-1", device: "Pixel 7", lastSeen: "just now" },
+        { id: "session-mobile-2", device: "iPhone 14", lastSeen: "2h ago" },
+      ],
     });
-    return res;
-  }
+  }, []);
 
-  async function requestReset() {
-    try {
-      const res = await api("/auth/password-reset/request", { email });
-      setMsg(res.ok ? "If that account exists, reset instructions were sent." : "Unable to request reset.");
-    } catch {
-      setMsg("Network error while requesting reset.");
-    }
-  }
-
-  async function completeReset() {
-    try {
-      const res = await api("/auth/password-reset/complete", { token, password });
-      setMsg(res.ok ? "Password updated. Continue to sign in." : "Reset token is invalid or expired.");
-    } catch {
-      setMsg("Network error while completing reset.");
-    }
-  }
-
-  async function resendVerification() {
-    try {
-      const res = await api("/auth/verify-email", { token });
-      setMsg(res.ok ? "Verification updated." : "Verification token is invalid or expired.");
-    } catch {
-      setMsg("Network error while verifying.");
-    }
-  }
-
-  function logout() {
-    setSignedIn(false);
-    setScreen("home");
-    setMsg("Signed out cleanly.");
+  if (state.isBooting) {
+    return <View style={styles.container}><Text style={styles.title}>Booting auth…</Text></View>;
   }
 
   return (
