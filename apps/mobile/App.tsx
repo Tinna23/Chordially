@@ -1,9 +1,13 @@
-import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { createMobileAuthStore } from "./src/auth/mobile-auth-store";
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
-const authStore = createMobileAuthStore();
+import { mobileConfig } from "./src/config";
+
+const tracks = [
+  "Authentication contracts and screens",
+  "Shared session state",
+  "Stellar wallet connection flows",
+  "Hackathon demo polish"
+];
 
 export default function App() {
   const [state, setState] = useState(authStore.getState());
@@ -24,85 +28,73 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Chordially Mobile</Text>
-      <Text style={styles.subtitle}>
-        {state.isAuthenticated ? "Signed in" : "Signed out"} · {state.isOffline ? "Offline" : "Online"}
-      </Text>
-      <Pressable style={styles.button} onPress={() => authStore.setOffline(!state.isOffline)}>
-        <Text style={styles.buttonText}>{state.isOffline ? "Go Online" : "Go Offline"}</Text>
-      </Pressable>
-      <Text style={styles.sectionTitle}>Device Sessions</Text>
-      {state.sessions.map((session) => (
-        <View style={styles.sessionRow} key={session.id}>
-          <Text style={styles.sessionText}>{session.device} · {session.lastSeen}</Text>
-          <Pressable style={styles.revokeBtn} onPress={() => authStore.revokeSession(session.id)}>
-            <Text style={styles.revokeText}>Revoke</Text>
-          </Pressable>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.eyebrow}>Chordially Mobile Starter</Text>
+        <Text style={styles.title}>Ship the MVP step by step.</Text>
+        <Text style={styles.body}>
+          The mobile workspace now starts from a clean Expo shell aimed at the same
+          authentication-first roadmap as the API and web app.
+        </Text>
+
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Local services</Text>
+          <Text style={styles.panelBody}>API: {mobileConfig.apiBaseUrl}</Text>
+          <Text style={styles.panelBody}>Stellar: {mobileConfig.stellarServiceUrl}</Text>
         </View>
-      ))}
-      <StatusBar style="auto" />
-    </View>
+
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Upcoming tracks</Text>
+          {tracks.map((track) => (
+            <Text key={track} style={styles.panelBody}>
+              - {track}
+            </Text>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: "#0b0b0f",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24
+    backgroundColor: "#f7f0e8"
+  },
+  container: {
+    padding: 24,
+    gap: 18
+  },
+  eyebrow: {
+    color: "#9a3f19",
+    textTransform: "uppercase",
+    letterSpacing: 1.5
   },
   title: {
-    color: "#f4f0ff",
-    fontSize: 28,
+    fontSize: 36,
+    lineHeight: 38,
     fontWeight: "700",
-    marginBottom: 12
+    color: "#1f1a17"
   },
-  subtitle: {
-    color: "#c7c1d9",
+  body: {
     fontSize: 16,
-    textAlign: "center"
+    lineHeight: 24,
+    color: "#5e5248"
   },
-  sectionTitle: {
-    color: "#f4f0ff",
-    marginTop: 20,
-    marginBottom: 8,
-    fontWeight: "600",
+  panel: {
+    backgroundColor: "rgba(255,255,255,0.75)",
+    borderRadius: 20,
+    padding: 20,
+    gap: 8
   },
-  button: {
-    marginTop: 16,
-    backgroundColor: "#7c3aed",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+  panelTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1f1a17"
   },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  sessionRow: {
-    marginTop: 8,
-    width: "100%",
-    maxWidth: 320,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  sessionText: {
-    color: "#c7c1d9",
-    fontSize: 14,
-  },
-  revokeBtn: {
-    backgroundColor: "#ef4444",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  revokeText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
+  panelBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#5e5248"
   }
 });
