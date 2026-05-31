@@ -9,6 +9,7 @@
   },
   "main": "index.js",
   "files": [
+    "auth-config.ts",
     "tsconfig.base.json",
     "eslint.config.cjs"
   ]
