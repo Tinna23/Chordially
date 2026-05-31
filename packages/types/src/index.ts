@@ -48,3 +48,11 @@ export type Milestone = {
 };
 
 export type { AuthErrorCode } from "./auth-contracts.js";
+export {
+  WALLET_AUTH_TELEMETRY_EVENTS,
+  type WalletAuthTelemetryBoundary,
+  type WalletAuthTelemetryEventName,
+  type WalletAuthTelemetryOutcome,
+  type WalletAuthTelemetryPayload,
+  type WalletAuthTelemetryService,
+} from "./telemetry.js";
