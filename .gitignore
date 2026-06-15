@@ -8,6 +8,7 @@
 .DS_Store
 .env*
 !.env.example
+!.env.test
 *.tsbuildinfo
 next-env.d.ts
 .expo
