@@ -34,13 +34,13 @@ describe("fanService.createFanProfile", () => {
     expect(profile.avatarUrl).toBeNull()
   })
 
-  it("throws 409 if a fan profile already exists for the user", async () => {
+  it("returns the existing profile if one already exists (idempotent)", async () => {
     const user = await createUser("duplicate@test.com")
-    await fanService.createFanProfile({ userId: user.id, displayName: "Fan" })
+    const first = await fanService.createFanProfile({ userId: user.id, displayName: "Fan" })
+    const second = await fanService.createFanProfile({ userId: user.id, displayName: "Fan Again" })
 
-    await expect(
-      fanService.createFanProfile({ userId: user.id, displayName: "Fan Again" })
-    ).rejects.toMatchObject({ statusCode: 409, code: "FAN_PROFILE_EXISTS" })
+    expect(second.id).toBe(first.id)
+    expect(second.displayName).toBe("Fan")
   })
 })
 
@@ -78,6 +78,44 @@ describe("fanService.updateFanProfile", () => {
     const user = await createUser("nobody@test.com")
     await expect(
       fanService.updateFanProfile("nonexistent-id", { displayName: "X" }, user.id)
+    ).rejects.toMatchObject({ statusCode: 404, code: "FAN_NOT_FOUND" })
+  })
+})
+
+describe("fanService.updateGenrePrefs", () => {
+  it("allows the owner to update genre preferences", async () => {
+    const user = await createUser("genrefan@test.com")
+    const profile = await fanService.createFanProfile({
+      userId: user.id,
+      displayName: "Genre Fan",
+    })
+
+    const updated = await fanService.updateGenrePrefs(
+      profile.id,
+      ["jazz", "indie", "lo-fi"],
+      user.id
+    )
+
+    expect(updated.genrePrefs).toEqual(["jazz", "indie", "lo-fi"])
+  })
+
+  it("throws 403 if a different user tries to update genre prefs", async () => {
+    const user = await createUser("genreowner@test.com")
+    const other = await createUser("genreother@test.com")
+    const profile = await fanService.createFanProfile({
+      userId: user.id,
+      displayName: "Fan",
+    })
+
+    await expect(
+      fanService.updateGenrePrefs(profile.id, ["pop"], other.id)
+    ).rejects.toMatchObject({ statusCode: 403, code: "FORBIDDEN" })
+  })
+
+  it("throws 404 for a nonexistent profile", async () => {
+    const user = await createUser("genrenobody@test.com")
+    await expect(
+      fanService.updateGenrePrefs("nonexistent-id", ["rock"], user.id)
     ).rejects.toMatchObject({ statusCode: 404, code: "FAN_NOT_FOUND" })
   })
 })

@@ -17,13 +17,7 @@ export const fanService = {
 
   async createFanProfile(input: CreateFanProfileInput): Promise<FanProfile> {
     const existing = await fanRepository.findByUserId(input.userId)
-    if (existing) {
-      throw new AppError(
-        409,
-        "FAN_PROFILE_EXISTS",
-        "A fan profile already exists for this account"
-      )
-    }
+    if (existing) return existing
 
     return fanRepository.create(input)
   },
@@ -47,5 +41,26 @@ export const fanService = {
     }
 
     return fanRepository.update(id, input)
+  },
+
+  async updateGenrePrefs(
+    id: string,
+    genrePrefs: string[],
+    requestingUserId: string
+  ): Promise<FanProfile> {
+    const profile = await fanRepository.findById(id)
+    if (!profile) {
+      throw new AppError(404, "FAN_NOT_FOUND", "Fan profile not found")
+    }
+
+    if (profile.userId !== requestingUserId) {
+      throw new AppError(
+        403,
+        "FORBIDDEN",
+        "You do not have permission to edit this profile"
+      )
+    }
+
+    return fanRepository.setGenrePrefs(id, genrePrefs)
   },
 }
