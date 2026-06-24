@@ -41,7 +41,7 @@ export default function EditProfilePage() {
     return <p role="alert">{state.message}</p>
   }
 
-  const { creatorProfile, fanProfile } = state.data
+  const { creatorProfile, fanProfile } = state.data.user
 
   const initialValues = {
     displayName:
