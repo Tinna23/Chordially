@@ -31,12 +31,19 @@ const baseFan = {
 }
 
 describe("computeCreatorCompleteness", () => {
-  it("returns 0 when all fields are empty", () => {
+  it("returns 0 with all missing fields when all fields are empty", () => {
     const result = computeCreatorCompleteness(baseCreator)
     expect(result.score).toBe(0)
+    expect(result.missingFields).toEqual([
+      "displayName",
+      "bio",
+      "avatarUrl",
+      "genre",
+      "location",
+    ])
   })
 
-  it("returns 100 when all fields are filled", () => {
+  it("returns 100 with no missing fields when all fields are filled", () => {
     const result = computeCreatorCompleteness({
       ...baseCreator,
       displayName: "Solar Vibes",
@@ -46,25 +53,46 @@ describe("computeCreatorCompleteness", () => {
       location: "Lagos",
     })
     expect(result.score).toBe(100)
+    expect(result.missingFields).toEqual([])
   })
 
-  it("returns partial score for partially filled profiles", () => {
+  it("weights bio (30) higher than location (10)", () => {
+    const withBio = computeCreatorCompleteness({
+      ...baseCreator,
+      bio: "Has a bio",
+    })
+    const withLocation = computeCreatorCompleteness({
+      ...baseCreator,
+      location: "Lagos",
+    })
+    expect(withBio.score).toBeGreaterThan(withLocation.score)
+    expect(withBio.score).toBe(30)
+    expect(withLocation.score).toBe(10)
+  })
+
+  it("returns correct missingFields for partially filled profile", () => {
     const result = computeCreatorCompleteness({
       ...baseCreator,
       displayName: "Solar Vibes",
-      bio: "Indie producer",
+      avatarUrl: "https://example.com/avatar.jpg",
     })
-    expect(result.score).toBe(40)
+    expect(result.score).toBe(45)
+    expect(result.missingFields).toEqual(["bio", "genre", "location"])
   })
 })
 
 describe("computeFanCompleteness", () => {
-  it("returns 0 when all fields are empty", () => {
+  it("returns 0 with all missing fields when all fields are empty", () => {
     const result = computeFanCompleteness(baseFan)
     expect(result.score).toBe(0)
+    expect(result.missingFields).toEqual([
+      "displayName",
+      "avatarUrl",
+      "genrePrefs",
+    ])
   })
 
-  it("returns 100 when all fields are filled", () => {
+  it("returns 100 with no missing fields when all fields are filled", () => {
     const result = computeFanCompleteness({
       ...baseFan,
       displayName: "Cool Fan",
@@ -72,6 +100,21 @@ describe("computeFanCompleteness", () => {
       genrePrefs: ["jazz", "indie"],
     })
     expect(result.score).toBe(100)
+    expect(result.missingFields).toEqual([])
+  })
+
+  it("weights avatarUrl (40) highest for fan profiles", () => {
+    const withAvatar = computeFanCompleteness({
+      ...baseFan,
+      avatarUrl: "https://example.com/avatar.jpg",
+    })
+    const withName = computeFanCompleteness({
+      ...baseFan,
+      displayName: "Cool Fan",
+    })
+    expect(withAvatar.score).toBe(40)
+    expect(withName.score).toBe(30)
+    expect(withAvatar.score).toBeGreaterThan(withName.score)
   })
 
   it("counts genrePrefs as filled only when non-empty", () => {
@@ -80,6 +123,7 @@ describe("computeFanCompleteness", () => {
       displayName: "Cool Fan",
       genrePrefs: [],
     })
-    expect(result.score).toBe(33)
+    expect(result.score).toBe(30)
+    expect(result.missingFields).toContain("genrePrefs")
   })
 })
