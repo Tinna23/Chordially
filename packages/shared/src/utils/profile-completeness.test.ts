@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   computeCreatorCompleteness,
   computeFanCompleteness,
+  creatorFieldLabels,
+  fanFieldLabels,
 } from "./profile-completeness.js"
 
 const baseCreator = {
@@ -78,6 +80,28 @@ describe("computeCreatorCompleteness", () => {
     })
     expect(result.score).toBe(45)
     expect(result.missingFields).toEqual(["bio", "genre", "location"])
+  })
+})
+
+describe("creatorFieldLabels", () => {
+  it("has a label for every field returned in missingFields", () => {
+    const result = computeCreatorCompleteness(baseCreator)
+    for (const key of result.missingFields) {
+      expect(creatorFieldLabels[key]).toBeDefined()
+    }
+  })
+
+  it("maps avatarUrl to a human-readable label", () => {
+    expect(creatorFieldLabels["avatarUrl"]).toBe("Profile photo")
+  })
+})
+
+describe("fanFieldLabels", () => {
+  it("has a label for every field returned in missingFields", () => {
+    const result = computeFanCompleteness(baseFan)
+    for (const key of result.missingFields) {
+      expect(fanFieldLabels[key]).toBeDefined()
+    }
   })
 })
 

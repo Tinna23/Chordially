@@ -24,6 +24,20 @@ function computeFromFields(fields: WeightedField[]): ProfileCompletenessResult {
   return { score, missingFields }
 }
 
+export const creatorFieldLabels: Record<string, string> = {
+  displayName: "Display name",
+  bio: "Bio",
+  avatarUrl: "Profile photo",
+  genre: "Genre",
+  location: "Location",
+}
+
+export const fanFieldLabels: Record<string, string> = {
+  displayName: "Display name",
+  avatarUrl: "Profile photo",
+  genrePrefs: "Genre preferences",
+}
+
 export function computeCreatorCompleteness(
   profile: CreatorProfileResponse
 ): ProfileCompletenessResult {
